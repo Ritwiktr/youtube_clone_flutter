@@ -22,23 +22,24 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        title: Image.network(
-          'https://www.youtube.com/img/desktop/yt_1200.png',
-          height: 30,
+        title: Image.asset(
+          'assets/youtube_logo.png',
+          height: 40,
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: Colors.black,
         actions: [
           IconButton(
-            icon: Icon(Icons.cast, color: Colors.black),
+            icon: Icon(Icons.cast, color: Colors.white),
             onPressed: () {},
           ),
           IconButton(
-            icon: Icon(Icons.notifications_none, color: Colors.black),
+            icon: Icon(Icons.notifications_none, color: Colors.white),
             onPressed: () {},
           ),
           IconButton(
-            icon: Icon(Icons.search, color: Colors.black),
+            icon: Icon(Icons.search, color: Colors.white),
             onPressed: () {},
           ),
           IconButton(
@@ -55,7 +56,7 @@ class HomeScreen extends StatelessWidget {
       body: ListView.builder(
         itemCount: videos.length,
         itemBuilder: (context, index) {
-          return InkWell(
+          return GestureDetector(
             onTap: () {
               Navigator.push(
                 context,
@@ -76,10 +77,17 @@ class HomeScreen extends StatelessWidget {
                   leading: CircleAvatar(
                     backgroundImage: NetworkImage('https://placekitten.com/100/100'),
                   ),
-                  title: Text(videos[index]['title']!),
-                  subtitle: Text(videos[index]['channel']!),
-                  trailing: Icon(Icons.more_vert),
+                  title: Text(
+                    videos[index]['title']!,
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(
+                    videos[index]['channel']!,
+                    style: TextStyle(color: Colors.grey[400]),
+                  ),
+                  trailing: Icon(Icons.more_vert, color: Colors.white),
                 ),
+                Divider(color: Colors.grey[800], height: 1),
               ],
             ),
           );
@@ -87,8 +95,9 @@ class HomeScreen extends StatelessWidget {
       ),
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.red,
-        unselectedItemColor: Colors.black,
+        backgroundColor: Colors.black,
+        selectedItemColor: Colors.white,
+        unselectedItemColor: Colors.grey[700],
         items: [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.explore), label: 'Explore'),

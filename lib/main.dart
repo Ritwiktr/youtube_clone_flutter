@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:you_tube/screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/profile_screen.dart';
 
@@ -15,7 +16,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.red,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: HomeScreen(),
+      home: LoginScreen(),
       routes: {
         '/profile': (context) => ProfileScreen(),
       },
