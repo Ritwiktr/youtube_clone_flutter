@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'home_screen.dart';
-import 'signup.dart';
 
-class LoginScreen extends StatefulWidget {
+class SignupScreen extends StatefulWidget {
   @override
-  _LoginScreenState createState() => _LoginScreenState();
+  _SignupScreenState createState() => _SignupScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _SignupScreenState extends State<SignupScreen> {
   final _formKey = GlobalKey<FormState>();
   String _email = '';
   String _password = '';
+  String _confirmPassword = '';
+  String _username = '';
   bool _isPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
   bool _isLoading = false;
 
   @override
@@ -42,9 +43,16 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     Image.asset(
                       'assets/youtube_logo.png',
-                      height: 300,
+                      height: 200,
                     ),
                     SizedBox(height: 24),
+                    _buildTextField(
+                      label: 'Username',
+                      hint: 'Enter your username',
+                      icon: Icons.person,
+                      onSaved: (value) => _username = value!,
+                    ),
+                    SizedBox(height: 16),
                     _buildTextField(
                       label: 'Email',
                       hint: 'Enter your email',
@@ -60,6 +68,15 @@ class _LoginScreenState extends State<LoginScreen> {
                       onSaved: (value) => _password = value!,
                       isPassword: true,
                     ),
+                    SizedBox(height: 16),
+                    _buildTextField(
+                      label: 'Confirm Password',
+                      hint: 'Confirm your password',
+                      icon: Icons.lock_outline,
+                      onSaved: (value) => _confirmPassword = value!,
+                      isPassword: true,
+                      isConfirmPassword: true,
+                    ),
                     SizedBox(height: 24),
                     ElevatedButton(
                       child: Padding(
@@ -67,7 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: _isLoading
                             ? CircularProgressIndicator(color: Colors.white)
                             : Text(
-                          'Sign In',
+                          'Sign Up',
                           style: TextStyle(fontSize: 18, color: Colors.white),
                         ),
                       ),
@@ -80,36 +97,24 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       onPressed: _isLoading ? null : _submitForm,
                     ),
-                    SizedBox(height: 16),
-                    TextButton(
-                      child: Text(
-                        'Forgot password?',
-                        style: TextStyle(color: Colors.white70),
-                      ),
-                      onPressed: () {
-                        // Handle forgot password
-                      },
-                    ),
                     SizedBox(height: 24),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          "Don't have an account?",
+                          "Already have an account?",
                           style: TextStyle(color: Colors.white70),
                         ),
                         TextButton(
                           child: Text(
-                            'Sign up',
+                            'Sign in',
                             style: TextStyle(
                               color: Colors.red.shade300,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(builder: (context) => SignupScreen()),
-                            );
+                            Navigator.of(context).pop();
                           },
                         ),
                       ],
@@ -130,6 +135,7 @@ class _LoginScreenState extends State<LoginScreen> {
     required IconData icon,
     required Function(String?) onSaved,
     bool isPassword = false,
+    bool isConfirmPassword = false,
     TextInputType keyboardType = TextInputType.text,
   }) {
     return TextFormField(
@@ -151,15 +157,21 @@ class _LoginScreenState extends State<LoginScreen> {
           borderSide: BorderSide(color: Colors.red.shade300, width: 2),
         ),
         prefixIcon: Icon(icon, color: Colors.red.shade300),
-        suffixIcon: isPassword
+        suffixIcon: isPassword || isConfirmPassword
             ? IconButton(
           icon: Icon(
-            _isPasswordVisible ? Icons.visibility_off : Icons.visibility,
+            (isPassword ? _isPasswordVisible : _isConfirmPasswordVisible)
+                ? Icons.visibility_off
+                : Icons.visibility,
             color: Colors.red.shade300,
           ),
           onPressed: () {
             setState(() {
-              _isPasswordVisible = !_isPasswordVisible;
+              if (isPassword) {
+                _isPasswordVisible = !_isPasswordVisible;
+              } else {
+                _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
+              }
             });
           },
         )
@@ -168,15 +180,24 @@ class _LoginScreenState extends State<LoginScreen> {
         fillColor: Colors.black54,
       ),
       style: TextStyle(color: Colors.white),
-      obscureText: isPassword && !_isPasswordVisible,
+      obscureText: (isPassword && !_isPasswordVisible) ||
+          (isConfirmPassword && !_isConfirmPasswordVisible),
       keyboardType: keyboardType,
       validator: (value) {
         if (value == null || value.isEmpty) {
           return 'This field is required';
         }
+        if (isConfirmPassword && value != _password) {
+          return 'Passwords do not match';
+        }
         return null;
       },
       onSaved: onSaved,
+      onChanged: (value) {
+        if (isPassword) {
+          _password = value;
+        }
+      },
     );
   }
 
@@ -188,32 +209,27 @@ class _LoginScreenState extends State<LoginScreen> {
       });
 
       try {
-        final response = await Supabase.instance.client.auth.signInWithPassword(
+        final response = await Supabase.instance.client.auth.signUp(
           email: _email,
           password: _password,
         );
 
         if (response.user != null) {
-          // Fetch user profile
-          final profile = await Supabase.instance.client
-              .from('profiles')
-              .select()
-              .eq('user_id', response.user!.id)
-              .single();
+          // Create user profile
+          await Supabase.instance.client.from('profiles').insert({
+            'user_id': response.user!.id,
+            'username': _username,
+          });
 
-          if (profile == null) {
-            // If profile doesn't exist, create one
-            await Supabase.instance.client.from('profiles').insert({
-              'user_id': response.user!.id,
-              'username': _email.split('@')[0], // Default username
-            });
-          }
-
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => HomeScreen()),
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Sign Up Successful! Please check your email to confirm your account.'),
+              backgroundColor: Colors.green,
+            ),
           );
+          Navigator.of(context).pop();
         } else {
-          _showErrorSnackBar('Login failed. Please try again.');
+          _showErrorSnackBar('Sign Up failed. Please try again.');
         }
       } on AuthException catch (error) {
         _showErrorSnackBar('Authentication error: ${error.message}');
