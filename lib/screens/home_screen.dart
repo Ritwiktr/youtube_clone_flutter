@@ -12,24 +12,17 @@ class HomeScreen extends StatefulWidget {
   _HomeScreenState createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> {
   final VideoService _videoService = VideoService();
-  List<Map<String, dynamic>> _publicVideos = [];
-  List<Map<String, dynamic>> _privateVideos = [];
+  List<Map<String, dynamic>> _allVideos = [];
   bool _isLoading = true;
-  late TabController _tabController;
+  TextEditingController _searchController = TextEditingController();
+  bool _isSearching = false;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
     _loadVideos();
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
   }
 
   Future<void> _loadVideos() async {
@@ -40,8 +33,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       final publicVideos = await _videoService.getPublicVideos();
       final privateVideos = await _videoService.getPrivateVideosForCurrentUser();
       setState(() {
-        _publicVideos = publicVideos;
-        _privateVideos = privateVideos;
+        _allVideos = [...publicVideos, ...privateVideos];
+        _allVideos.sort((a, b) => b['upload_date'].compareTo(a['upload_date']));
         _isLoading = false;
       });
     } catch (e) {
@@ -174,73 +167,80 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     await _loadVideos();
   }
 
+  void _toggleSearch() {
+    setState(() {
+      _isSearching = !_isSearching;
+      if (!_isSearching) {
+        _searchController.clear();
+        _loadVideos();
+      }
+    });
+  }
+
+  void _performSearch(String query) {
+    setState(() {
+      _allVideos = _allVideos.where((video) =>
+      video['title'].toLowerCase().contains(query.toLowerCase()) ||
+          video['description'].toLowerCase().contains(query.toLowerCase()) ||
+          video['category'].toLowerCase().contains(query.toLowerCase()) ||
+          (video['tags'] as List<String>).any((tag) =>
+              tag.toLowerCase().contains(query.toLowerCase()))).toList();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      body: NestedScrollView(
-        headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
-          return <Widget>[
-            SliverAppBar(
-              floating: true,
-              pinned: true,
-              backgroundColor: Colors.black,
-              expandedHeight: 120,
-              flexibleSpace: FlexibleSpaceBar(
-                title: Text('YouTube Clone', style: TextStyle(color: Colors.white)),
-
-              ),
-              actions: [
-                IconButton(
-                  icon: Icon(Icons.cast, color: Colors.white),
-                  onPressed: () {},
-                ),
-                IconButton(
-                  icon: Icon(Icons.notifications_none, color: Colors.white),
-                  onPressed: () {},
-                ),
-                IconButton(
-                  icon: Icon(Icons.search, color: Colors.white),
-                  onPressed: () {},
-                ),
-                IconButton(
-                  icon: CircleAvatar(
-                    backgroundImage: NetworkImage('https://placekitten.com/100/100'),
-                    radius: 12,
-                  ),
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/profile');
-                  },
-                ),
-              ],
-              bottom: TabBar(
-                controller: _tabController,
-                tabs: [
-                  Tab(text: 'Public'),
-                  Tab(text: 'Private'),
-                ],
-                indicator: BoxDecoration(
-                  borderRadius: BorderRadius.circular(50),
-                  color: Colors.red,
-                ),
-              ),
-            ),
-          ];
-        },
-        body: TabBarView(
-          controller: _tabController,
-          children: [
-            _isLoading
-                ? _buildShimmerLoading()
-                : _buildVideoList(_publicVideos),
-            _isLoading
-                ? _buildShimmerLoading()
-                : _buildVideoList(_privateVideos),
-          ],
-        ),
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        title: _isSearching
+            ? TextField(
+          controller: _searchController,
+          style: TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: 'Search videos...',
+            hintStyle: TextStyle(color: Colors.grey),
+            border: InputBorder.none,
+          ),
+          onChanged: _performSearch,
+        )
+            : Text('YouTube Clone', style: TextStyle(color: Colors.white)),
+        actions: [
+          IconButton(
+            icon: Icon(_isSearching ? Icons.close : Icons.search, color: Colors.white),
+            onPressed: _toggleSearch,
+          ),
+          IconButton(
+            icon: Icon(Icons.cast, color: Colors.white),
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: Icon(Icons.notifications_none, color: Colors.white),
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: Icon(Icons.account_circle, color: Colors.white),
+            onPressed: () {
+              Navigator.pushNamed(context, '/profile');
+            },
+          ),
+        ],
       ),
+      body: _isLoading
+          ? _buildShimmerLoading()
+          : _buildVideoList(_allVideos),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _uploadVideo,
+        child: Icon(Icons.add),
+        backgroundColor: Colors.red,
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: BottomAppBar(
-        color: Colors.black,
+        color: Colors.grey[900],
+        shape: CircularNotchedRectangle(),
+        notchMargin: 6.0,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
@@ -252,12 +252,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               icon: Icon(Icons.explore, color: Colors.white),
               onPressed: () {},
             ),
-            FloatingActionButton(
-              child: Icon(Icons.add),
-              onPressed: _uploadVideo,
-              mini: true,
-              backgroundColor: Colors.red,
-            ),
+            SizedBox(width: 32),
             IconButton(
               icon: Icon(Icons.subscriptions, color: Colors.white),
               onPressed: () {},
@@ -274,8 +269,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
   Widget _buildShimmerLoading() {
     return Shimmer.fromColors(
-      baseColor: Colors.grey[800]!,
-      highlightColor: Colors.grey[700]!,
+      baseColor: Colors.grey[900]!,
+      highlightColor: Colors.grey[800]!,
       child: ListView.builder(
         itemCount: 5,
         itemBuilder: (context, index) {
@@ -346,11 +341,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                     width: double.infinity,
                     fit: BoxFit.cover,
                     placeholder: (context, url) => Shimmer.fromColors(
-                      baseColor: Colors.grey[800]!,
-                      highlightColor: Colors.grey[700]!,
+                      baseColor: Colors.grey[900]!,
+                      highlightColor: Colors.grey[800]!,
                       child: Container(
                         height: 200,
-                        color: Colors.grey[800],
+                        color: Colors.grey[900],
                       ),
                     ),
                   ),
@@ -399,7 +394,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   Row(
                     children: [
                       CircleAvatar(
-                        backgroundImage: NetworkImage('https://placekitten.com/100/100'),
+                        child: Icon(Icons.person),
                         radius: 16,
                       ),
                       SizedBox(width: 8),

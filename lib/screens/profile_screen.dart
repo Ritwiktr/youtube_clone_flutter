@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'edit_profile.dart';
 
 class ProfileScreen extends StatefulWidget {
   @override
@@ -141,20 +141,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     SizedBox(height: 30),
                     _buildSection('Account', [
-                      _buildListTile(Icons.person, 'Edit Profile'),
-                      _buildListTile(Icons.security, 'Security'),
-                      _buildListTile(Icons.notifications, 'Notifications'),
+                      _buildListTile(Icons.person, 'Edit Profile', () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => EditScreen(
+                              initialUsername: _username,
+                              onUsernameChanged: (newUsername) {
+                                setState(() {
+                                  _username = newUsername;
+                                });
+                              },
+                            ),
+                          ),
+                        );
+                      }),
+                      _buildListTile(Icons.security, 'Security', () {}),
+                      _buildListTile(Icons.notifications, 'Notifications', () {}),
                     ]),
                     SizedBox(height: 20),
                     _buildSection('Content', [
-                      _buildListTile(Icons.video_library, 'My Videos'),
-                      _buildListTile(Icons.favorite, 'Liked Videos'),
-                      _buildListTile(Icons.history, 'Watch History'),
+                      _buildListTile(Icons.video_library, 'My Videos', () {}),
+                      _buildListTile(Icons.favorite, 'Liked Videos', () {}),
+                      _buildListTile(Icons.history, 'Watch History', () {}),
                     ]),
                     SizedBox(height: 20),
                     _buildSection('Support', [
-                      _buildListTile(Icons.help, 'Help & Feedback'),
-                      _buildListTile(Icons.info, 'About'),
+                      _buildListTile(Icons.help, 'Help & Feedback', () {}),
+                      _buildListTile(Icons.info, 'About', () {}),
                     ]),
                     SizedBox(height: 20),
                     Center(
@@ -201,7 +215,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildListTile(IconData icon, String title) {
+  Widget _buildListTile(IconData icon, String title, VoidCallback onTap) {
     return Container(
       margin: EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
@@ -212,9 +226,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         leading: Icon(icon, color: Colors.red),
         title: Text(title, style: TextStyle(color: Colors.white)),
         trailing: Icon(Icons.chevron_right, color: Colors.grey),
-        onTap: () {
-          // Handle tap
-        },
+        onTap: onTap,
       ),
     );
   }

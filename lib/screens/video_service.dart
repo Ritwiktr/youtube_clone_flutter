@@ -106,7 +106,7 @@ class VideoService {
     try {
       final response = await _supabase
           .from('videos')
-          .select('*, profiles:user_id(username)')
+          .select()
           .eq('is_public', true)
           .order('created_at', ascending: false);
 
