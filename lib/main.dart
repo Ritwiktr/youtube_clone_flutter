@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:you_tube/screens/home_screen.dart';
 import 'auth_state.dart';
 import 'screens/profile_screen.dart';
 
@@ -26,6 +27,7 @@ class MyApp extends StatelessWidget {
       home: const AuthStatee(), // Use AuthState as a widget, not a function
       routes: {
         '/profile': (context) => ProfileScreen(),
+        '/home' : (context) => HomeScreen(),
       },
     );
   }

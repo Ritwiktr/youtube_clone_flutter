@@ -212,6 +212,7 @@ class _SignupScreenState extends State<SignupScreen> {
         final response = await Supabase.instance.client.auth.signUp(
           email: _email,
           password: _password,
+          data: {'username': _username}, // Add this line
         );
 
         if (response.user != null) {
@@ -220,6 +221,13 @@ class _SignupScreenState extends State<SignupScreen> {
             'user_id': response.user!.id,
             'username': _username,
           });
+
+          // Update user's display name
+          await Supabase.instance.client.auth.updateUser(
+            UserAttributes(
+              data: {'username': _username},
+            ),
+          );
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -231,10 +239,6 @@ class _SignupScreenState extends State<SignupScreen> {
         } else {
           _showErrorSnackBar('Sign Up failed. Please try again.');
         }
-      } on AuthException catch (error) {
-        _showErrorSnackBar('Authentication error: ${error.message}');
-      } on PostgrestException catch (error) {
-        _showErrorSnackBar('Database error: ${error.message}');
       } catch (error) {
         _showErrorSnackBar('An unexpected error occurred: $error');
       } finally {
