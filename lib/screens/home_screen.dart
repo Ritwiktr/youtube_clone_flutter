@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:file_picker/file_picker.dart';
 import 'dart:io';
+import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:shimmer/shimmer.dart';
 import 'video_screen.dart';
 import 'video_service.dart';
 
@@ -34,13 +36,20 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     setState(() {
       _isLoading = true;
     });
-    final publicVideos = await _videoService.getPublicVideos();
-    final privateVideos = await _videoService.getPrivateVideosForCurrentUser();
-    setState(() {
-      _publicVideos = publicVideos;
-      _privateVideos = privateVideos;
-      _isLoading = false;
-    });
+    try {
+      final publicVideos = await _videoService.getPublicVideos();
+      final privateVideos = await _videoService.getPrivateVideosForCurrentUser();
+      setState(() {
+        _publicVideos = publicVideos;
+        _privateVideos = privateVideos;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading videos: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _uploadVideo() async {
@@ -87,19 +96,35 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             children: [
               TextField(
                 onChanged: (value) => title = value,
-                decoration: InputDecoration(hintText: "Title"),
+                decoration: InputDecoration(
+                  hintText: "Title",
+                  border: OutlineInputBorder(),
+                ),
               ),
+              SizedBox(height: 8),
               TextField(
                 onChanged: (value) => description = value,
-                decoration: InputDecoration(hintText: "Description"),
+                decoration: InputDecoration(
+                  hintText: "Description",
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
               ),
+              SizedBox(height: 8),
               TextField(
                 onChanged: (value) => category = value,
-                decoration: InputDecoration(hintText: "Category"),
+                decoration: InputDecoration(
+                  hintText: "Category",
+                  border: OutlineInputBorder(),
+                ),
               ),
+              SizedBox(height: 8),
               TextField(
                 onChanged: (value) => tags = value.split(','),
-                decoration: InputDecoration(hintText: "Tags (comma-separated)"),
+                decoration: InputDecoration(
+                  hintText: "Tags (comma-separated)",
+                  border: OutlineInputBorder(),
+                ),
               ),
               SwitchListTile(
                 title: Text('Public'),
@@ -119,8 +144,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             child: Text('Cancel'),
             onPressed: () => Navigator.pop(context),
           ),
-          TextButton(
-            child: Text('OK'),
+          ElevatedButton(
+            child: Text('Upload'),
             onPressed: () => Navigator.pop(context),
           ),
         ],
@@ -145,77 +170,119 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       case 'dislike':
         await _videoService.dislikeVideo(videoId);
         break;
-    // Add more cases as needed
     }
-    await _loadVideos(); // Refresh the video list
+    await _loadVideos();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: Image.asset(
-          'assets/youtube_logo.png',
-          height: 40,
-        ),
-        backgroundColor: Colors.black,
-        bottom: TabBar(
+      body: NestedScrollView(
+        headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+          return <Widget>[
+            SliverAppBar(
+              floating: true,
+              pinned: true,
+              backgroundColor: Colors.black,
+              expandedHeight: 120,
+              flexibleSpace: FlexibleSpaceBar(
+                title: Text('YouTube Clone', style: TextStyle(color: Colors.white)),
+
+              ),
+              actions: [
+                IconButton(
+                  icon: Icon(Icons.cast, color: Colors.white),
+                  onPressed: () {},
+                ),
+                IconButton(
+                  icon: Icon(Icons.notifications_none, color: Colors.white),
+                  onPressed: () {},
+                ),
+                IconButton(
+                  icon: Icon(Icons.search, color: Colors.white),
+                  onPressed: () {},
+                ),
+                IconButton(
+                  icon: CircleAvatar(
+                    backgroundImage: NetworkImage('https://placekitten.com/100/100'),
+                    radius: 12,
+                  ),
+                  onPressed: () {
+                    Navigator.pushNamed(context, '/profile');
+                  },
+                ),
+              ],
+              bottom: TabBar(
+                controller: _tabController,
+                tabs: [
+                  Tab(text: 'Public'),
+                  Tab(text: 'Private'),
+                ],
+                indicator: BoxDecoration(
+                  borderRadius: BorderRadius.circular(50),
+                  color: Colors.red,
+                ),
+              ),
+            ),
+          ];
+        },
+        body: TabBarView(
           controller: _tabController,
-          tabs: [
-            Tab(text: 'Public'),
-            Tab(text: 'Private'),
+          children: [
+            _isLoading
+                ? _buildShimmerLoading()
+                : _buildVideoList(_publicVideos),
+            _isLoading
+                ? _buildShimmerLoading()
+                : _buildVideoList(_privateVideos),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.cast, color: Colors.white),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: Icon(Icons.notifications_none, color: Colors.white),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: Icon(Icons.search, color: Colors.white),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: CircleAvatar(
-              backgroundImage: NetworkImage('https://placekitten.com/100/100'),
-              radius: 12,
+      ),
+      bottomNavigationBar: BottomAppBar(
+        color: Colors.black,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            IconButton(
+              icon: Icon(Icons.home, color: Colors.white),
+              onPressed: () {},
             ),
-            onPressed: () {
-              Navigator.pushNamed(context, '/profile');
-            },
-          ),
-        ],
+            IconButton(
+              icon: Icon(Icons.explore, color: Colors.white),
+              onPressed: () {},
+            ),
+            FloatingActionButton(
+              child: Icon(Icons.add),
+              onPressed: _uploadVideo,
+              mini: true,
+              backgroundColor: Colors.red,
+            ),
+            IconButton(
+              icon: Icon(Icons.subscriptions, color: Colors.white),
+              onPressed: () {},
+            ),
+            IconButton(
+              icon: Icon(Icons.video_library, color: Colors.white),
+              onPressed: () {},
+            ),
+          ],
+        ),
       ),
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator())
-          : TabBarView(
-        controller: _tabController,
-        children: [
-          _buildVideoList(_publicVideos),
-          _buildVideoList(_privateVideos),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.black,
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.grey[700],
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.explore), label: 'Explore'),
-          BottomNavigationBarItem(icon: Icon(Icons.add_circle_outline), label: 'Add'),
-          BottomNavigationBarItem(icon: Icon(Icons.subscriptions), label: 'Subscriptions'),
-          BottomNavigationBarItem(icon: Icon(Icons.video_library), label: 'Library'),
-        ],
-        onTap: (index) {
-          if (index == 2) {
-            _uploadVideo();
-          }
+    );
+  }
+
+  Widget _buildShimmerLoading() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey[800]!,
+      highlightColor: Colors.grey[700]!,
+      child: ListView.builder(
+        itemCount: 5,
+        itemBuilder: (context, index) {
+          return Card(
+            margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+            child: Container(height: 250),
+          );
         },
       ),
     );
@@ -224,77 +291,157 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   Widget _buildVideoList(List<Map<String, dynamic>> videos) {
     return RefreshIndicator(
       onRefresh: _loadVideos,
-      child: ListView.builder(
-        itemCount: videos.length,
-        itemBuilder: (context, index) {
-          final video = videos[index];
-          return _buildVideoItem(video);
-        },
+      child: videos.isEmpty
+          ? Center(child: Text('No videos available', style: TextStyle(color: Colors.white)))
+          : AnimationLimiter(
+        child: ListView.builder(
+          itemCount: videos.length,
+          itemBuilder: (context, index) {
+            final video = videos[index];
+            return AnimationConfiguration.staggeredList(
+              position: index,
+              duration: const Duration(milliseconds: 375),
+              child: SlideAnimation(
+                verticalOffset: 50.0,
+                child: FadeInAnimation(
+                  child: _buildVideoItem(video),
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
 
   Widget _buildVideoItem(Map<String, dynamic> video) {
     return GestureDetector(
-      onTap: () async {
-        String videoUrl = video['is_public']
-            ? video['file_path']
-            : await _videoService.getPrivateVideoUrl(video['file_path']);
+      onTap: () {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => VideoScreen(videoUrl: videoUrl),
+            builder: (context) => VideoScreen(
+              videoUrl: video['file_path'],
+              videoTitle: video['title'],
+            ),
           ),
         );
       },
-      child: Column(
-        children: [
-          CachedNetworkImage(
-            imageUrl: video['thumbnail_url'] ?? 'https://placekitten.com/640/360',
-            height: 200,
-            width: double.infinity,
-            fit: BoxFit.cover,
-          ),
-          ListTile(
-            leading: CircleAvatar(
-              backgroundImage: NetworkImage('https://placekitten.com/100/100'),
-            ),
-            title: Text(
-              video['title'],
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Card(
+        color: Colors.grey[900],
+        margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              alignment: Alignment.bottomRight,
               children: [
-                Text(
-                  'Views: ${video['view_count']} • Likes: ${video['like_count']}',
-                  style: TextStyle(color: Colors.grey[400]),
+                ClipRRect(
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+                  child: CachedNetworkImage(
+                    imageUrl: video['thumbnail_url'] ?? 'https://picsum.photos/640/360',
+                    height: 200,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Shimmer.fromColors(
+                      baseColor: Colors.grey[800]!,
+                      highlightColor: Colors.grey[700]!,
+                      child: Container(
+                        height: 200,
+                        color: Colors.grey[800],
+                      ),
+                    ),
+                  ),
                 ),
-                Text(
-                  'Category: ${video['category']} • ${video['is_public'] ? 'Public' : 'Private'}',
-                  style: TextStyle(color: Colors.grey[400]),
+                Container(
+                  padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  margin: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    '${video['duration']}',
+                    style: TextStyle(color: Colors.white),
+                  ),
                 ),
               ],
             ),
-            trailing: PopupMenuButton<String>(
-              onSelected: (String result) {
-                _handleVideoAction(result, video['id']);
-              },
-              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                const PopupMenuItem<String>(
-                  value: 'like',
-                  child: Text('Like'),
-                ),
-                const PopupMenuItem<String>(
-                  value: 'dislike',
-                  child: Text('Dislike'),
-                ),
-                // Add more options as needed
-              ],
+            Padding(
+              padding: EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    video['title'],
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Views: ${video['view_count']} • Likes: ${video['like_count']}',
+                    style: TextStyle(color: Colors.grey[400]),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Category: ${video['category']} • ${video['is_public'] ? 'Public' : 'Private'}',
+                    style: TextStyle(color: Colors.grey[400]),
+                  ),
+                ],
+              ),
             ),
-          ),
-          Divider(color: Colors.grey[800], height: 1),
-        ],
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        backgroundImage: NetworkImage('https://placekitten.com/100/100'),
+                        radius: 16,
+                      ),
+                      SizedBox(width: 8),
+                      Text(
+                        video['user_name'] ?? 'Unknown User',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ],
+                  ),
+                  PopupMenuButton<String>(
+                    onSelected: (String result) {
+                      _handleVideoAction(result, video['id']);
+                    },
+                    itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                      PopupMenuItem<String>(
+                        value: 'like',
+                        child: Row(
+                          children: [
+                            Icon(Icons.thumb_up, color: Colors.grey),
+                            SizedBox(width: 8),
+                            Text('Like'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem<String>(
+                        value: 'dislike',
+                        child: Row(
+                          children: [
+                            Icon(Icons.thumb_down, color: Colors.grey),
+                            SizedBox(width: 8),
+                            Text('Dislike'),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 12),
+          ],
+        ),
       ),
     );
   }
